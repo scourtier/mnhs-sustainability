@@ -1,14 +1,16 @@
 library(plyr)
 library(reshape2)
+library(mondate)
 library(ggplot2)
 theme_set(theme_bw())
+library(scales)
 
 ## fdf = read.csv("exports/fees-2015-02-06.csv")
 ## fudf = read.csv("exports/feeusages-2015-02-06.csv")
 
 ## Load invoices dataframe
 idf = read.csv(
-  "invoice.csv",
+  "utilities_data/datastore_export/invoice.csv",
   colClasses=c("character", "character", "character", "character", "character",
                "character", "character", "character")
 )
@@ -25,7 +27,7 @@ ddply(idflast[,c("site", "provider")], .(site, provider), count)
 
 ## Load usages dataframe
 udf = read.csv(
-  "usage.csv",
+  "utilities_data/datastore_export/usage.csv",
   colClasses=c("character", "character", "character", "character", "Date",
                "character", "character", "numeric")
 )
@@ -48,7 +50,7 @@ iudf = merge(idflast, udf, by=c('invoice_id'))
 
 iudf$site[iudf$site == "Hill House"] = "HIL"
 iudf$site[iudf$site == "Mill City"] = "MCM"
-iudf$site[iudf$site == "MN Historical Society"] = "INSTI"
+iudf$site[iudf$site == "MN Historical Society"] = NA
 iudf$site[iudf$site == "1500 Mississippi"] = "1500"
 iudf$site[iudf$site == "Grand Mound"] = "GMD"
 iudf$site[iudf$site == "Mille Lacs Indian Museum"] = "MLM"
@@ -74,14 +76,17 @@ ddply(iudf[,c("site", "service")], .(site, service), count)
 min = min(na.omit(iudf$start))
 max = max(na.omit(iudf$start))
 
+iudf$start = as.Date(mondate(iudf$start) - 6)
+iudf$end = as.Date(mondate(iudf$end) - 6)
 ggplot(iudf) +
-  # geom_segment(aes(x=start, xend=end, y=site, yend=site), size=3, alpha=0.25) +
-  geom_segment(aes(x=start, xend=start + 10, y=site, yend=site, color=site), size=2) +
+  geom_segment(aes(x=start, xend=end, y=site, yend=site, color=site), size=3, alpha=0.2) +
+  geom_segment(aes(x=start, xend=start + 10, y=site, yend=site), size=2) +
   geom_blank(aes(x=iudf$start)) +
-  #  scale_colour_brewer() +
-  #  scale_x_date(limits=c(min, max)) +
-  facet_grid(service ~ ., scales = "free_y", space="free")
-ggsave("service_coverage.pdf", width=12, height=8)
+  scale_x_date(minor_breaks=date_breaks("3 months")) +  
+  facet_grid(service ~ ., scales = "free_y", space="free") +
+  xlab("Fiscal Year") +
+  ylab("")
+ggsave("service_coverage.pdf", width=14, height=8)
 
 ggplot(iudf) +
   geom_segment(aes(x=start, xend=end, y=provider, yend=provider), size=3, alpha=0.25) +
